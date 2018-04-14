@@ -5,11 +5,29 @@ import java.util.HashMap;
 import java.util.Iterator;
 
 import com.google.gson.stream.JsonWriter;
-
+import com.snowtide.PDF;
+import com.snowtide.pdf.Document;
+import com.snowtide.pdf.OutputTarget;
+/**
+ * 
+ * This class will be the main parsing launching point
+ * 
+ * @author GulZaib
+ *
+ */
 public class MainParser {
 	
 	enum Type {table,paragraph};
 	
+	/**
+	 * 
+	 * @param args
+	 * 1st Argument input file path
+	 * 2nd Output file path
+	 * 3rd Type
+	 * 4th Find string
+	 * 5th lenght
+	 */
 	public static void main(String args[])
 	{
 		String inputFilePath=args[0];
@@ -62,8 +80,12 @@ public class MainParser {
 		
 	}
 
-	private static ArrayList<JsonData> parsePDF(String inputFilePath, Type parseType, String args, int i) {
-		// TODO Auto-generated method stub
+	private static ArrayList<JsonData> parsePDF(String inputFilePath, Type parseType, String args, int i) throws IOException {
+		Document pdf = PDF.open(inputFilePath);
+	    StringBuilder text = new StringBuilder(1024);
+	    pdf.pipe(new OutputTarget(text));
+	    pdf.close();
+	    System.out.println(text);
 		return null;
 		
 	}
