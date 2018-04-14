@@ -1,11 +1,15 @@
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellType;
@@ -17,6 +21,7 @@ import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 
 import com.google.gson.stream.JsonWriter;
+import com.itextpdf.kernel.pdf.canvas.parser.clipper.Paths;
 import com.snowtide.PDF;
 import com.snowtide.pdf.Document;
 import com.snowtide.pdf.OutputTarget;
@@ -42,7 +47,15 @@ public class MainParser {
 	 */
 	public static void main(String args[])
 	{
-		String inputFilePath=args[0];
+		try {
+			parseSetPDF(args[0],args[1]);
+			
+			
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		/*String inputFilePath=args[0];
 		String outputFilePath=args[1];
 		Type parseType=Type.table;
 		if (args[2].equals("1"))
@@ -53,21 +66,82 @@ public class MainParser {
 		int dotPosition=inputFilePath.indexOf(".");
 		String extension=inputFilePath.substring(dotPosition);
 		try {
-		if(extension.equals("xlsx"))
+		if(extension.equals(".xlsx"))
 			writeJsonData(outputFilePath,parseExcel(inputFilePath,parseType,args[4],Integer.parseInt(args[5])));
-		else if(extension.equals("docx"))
+		else if(extension.equals(".docx"))
 			writeJsonData(outputFilePath,parseDocx(inputFilePath,parseType,args[4],Integer.parseInt(args[5])));
-		else if(extension.equals("pdf"))
+		else if(extension.equals(".pdf"))
 			writeJsonData(outputFilePath,parsePDF(inputFilePath,parseType,args[4],Integer.parseInt(args[5])));
-		writeSampleJsonData();
+		writeSampleJsonData();*/
 		}
-		catch(IOException e) {
-			e.printStackTrace();
-			System.exit(1);
-		}
+		private static void parseSetPDF(String string, String args) throws IOException {
+			File folder = new File(string);
+			File[] listOfFiles = folder.listFiles();
+			HashMap <String,String> att=new HashMap<String, String>();
+			ArrayList<String> fileNames=new ArrayList<String>();
+			for(File file:listOfFiles) {
+				Document pdf = PDF.open(file.getAbsolutePath());
+			    StringBuilder text = new StringBuilder(1024);
+			    fileNames.add(file.getName());
+			    pdf.pipe(new OutputTarget(text));
+			     pdf.close();
+			     boolean go=false;
+			    for(String line:text.toString().split("\n")) {
+			    	if(go) {
+			    		try {
+			    		int begin=line.indexOf("Senator ")+8;
+			    		int end=line.toLowerCase().indexOf("present");
+			    		if (end<0)
+			    			end=line.toLowerCase().indexOf("leave");
+			    		if (end<0)
+			    			end=line.toLowerCase().indexOf("absent");
+			    		String name=line.substring(begin, end).trim();
+			    		boolean present=line.toLowerCase().contains("present");
+			    		String status=att.get(name);
+			    		if(status==null)
+			    			att.put(name, present+"");
+			    		else att.put(name,status+","+present);
+			    		}
+			    		catch (Exception e) {};
+			    	}
+			    	if(line.toLowerCase().contains("status"))
+			    		go=true;
+			    }
+			   
+			    
+				
+			}
+			 System.out.println();
+			    String writeLine="names,party";
+			    Iterator keyItt=att.keySet().iterator();
+			    HashMap<String, String> partyMap = parseDocx(args);
+			    for(String fn:fileNames)
+			    	writeLine=writeLine+","+fn;
+			    writeLine=writeLine+","+"count";
+			    writeLine=writeLine+"\n";
+			    while(keyItt.hasNext()) {
+			    	String key=(String) keyItt.next();
+			    	String party=partyMap.get(key.trim());
+			    	String in = att.get(key).toLowerCase();
+			    	int wordcount = 0;
+			    	Pattern p = Pattern.compile("true");
+			    	Matcher m = p.matcher( in );
+			    	while (m.find()) {
+			    	    wordcount++;
+			    	}
+			    	writeLine=writeLine+key+","+party+","+att.get(key)+","+wordcount;
+			    	writeLine=writeLine+"\n";
+			    }
+			    Files.write(java.nio.file.Paths.get(string+"\\agg.txt"), writeLine.getBytes());	
+		
+	}
+//		IOException e) {
+//			e.printStackTrace();
+//			System.exit(1);
+//		}
 		
 	
-	}
+//	}
 
 	private static void writeSampleJsonData() throws IOException {
 		ArrayList<JsonData> sampleData=new 	ArrayList<JsonData>();
@@ -102,7 +176,7 @@ public class MainParser {
 		
 	}
 
-	private static ArrayList<JsonData> parseDocx(String inputFilePath, Type parseType, String args, int i) throws IOException {
+	private static HashMap<String,String> parseDocx(String inputFilePath) throws IOException {
 		 File file = new File(inputFilePath);
          FileInputStream fis = new FileInputStream(file.getAbsolutePath());
 
@@ -110,13 +184,22 @@ public class MainParser {
 
          List<XWPFParagraph> paragraphs = document.getParagraphs();
 
-
+         HashMap<String,String> partyMap=new HashMap<String, String>();
          for (XWPFParagraph para : paragraphs) {
-             System.out.println(para.getText());
+        	 String line=para.getText();
+        	 try {
+        	 int begin=line.indexOf("Senator ")+8;
+	    		int end=line.indexOf(",");
+	    		System.out.println();
+	    		String name=line.substring(begin, end).trim();
+	    		String party=line.substring(end+1);
+	    		partyMap.put(name, party);
+        	 }
+        	 catch(Exception e) {}
          }
          fis.close();
          document.close();
-		return null;
+		return partyMap;
 		
 	}
 
