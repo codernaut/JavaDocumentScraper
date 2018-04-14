@@ -1,8 +1,20 @@
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
+
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellType;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 
 import com.google.gson.stream.JsonWriter;
 import com.snowtide.PDF;
@@ -90,14 +102,49 @@ public class MainParser {
 		
 	}
 
-	private static ArrayList<JsonData> parseDocx(String inputFilePath, Type parseType, String args, int i) {
-		// TODO Auto-generated method stub
+	private static ArrayList<JsonData> parseDocx(String inputFilePath, Type parseType, String args, int i) throws IOException {
+		 File file = new File(inputFilePath);
+         FileInputStream fis = new FileInputStream(file.getAbsolutePath());
+
+         XWPFDocument document = new XWPFDocument(fis);
+
+         List<XWPFParagraph> paragraphs = document.getParagraphs();
+
+
+         for (XWPFParagraph para : paragraphs) {
+             System.out.println(para.getText());
+         }
+         fis.close();
+         document.close();
 		return null;
 		
 	}
 
-	private static ArrayList<JsonData> parseExcel(String inputFilePath, Type parseType, String args, int i) {
-		// TODO Auto-generated method stub
+	private static ArrayList<JsonData> parseExcel(String inputFilePath, Type parseType, String args, int i) throws IOException {
+		 FileInputStream excelFile = new FileInputStream(new File(inputFilePath));
+         Workbook workbook = new XSSFWorkbook(excelFile);
+         Sheet datatypeSheet = workbook.getSheetAt(0);
+         Iterator<Row> iterator = datatypeSheet.iterator();
+
+         while (iterator.hasNext()) {
+
+             Row currentRow = iterator.next();
+             Iterator<Cell> cellIterator = currentRow.iterator();
+
+             while (cellIterator.hasNext()) {
+
+                 Cell currentCell = cellIterator.next();
+                 //getCellTypeEnum shown as deprecated for version 3.15
+                 //getCellTypeEnum ill be renamed to getCellType starting from version 4.0
+                 if (currentCell.getCellTypeEnum() == CellType.STRING) {
+                     System.out.print(currentCell.getStringCellValue() + "--");
+                 } else if (currentCell.getCellTypeEnum() == CellType.NUMERIC) {
+                     System.out.print(currentCell.getNumericCellValue() + "--");
+                 }
+
+             }
+             System.out.println();
+         }
 		return null;
 		
 	}
