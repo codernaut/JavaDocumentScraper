@@ -8,9 +8,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.Row;
@@ -33,127 +35,167 @@ import com.snowtide.pdf.OutputTarget;
  *
  */
 public class MainParser {
-	
-	enum Type {table,paragraph};
-	
+
+	enum Type {
+		table, paragraph
+	};
+
 	/**
 	 * 
 	 * @param args
-	 * 1st Argument input file path
-	 * 2nd Output file path
-	 * 3rd Type
-	 * 4th Find string
-	 * 5th lenght
+	 *            1st Argument input file path 2nd Output file path 3rd Type 4th
+	 *            Find string 5th lenght
 	 */
-	public static void main(String args[])
-	{
+	public static void main(String args[]) {
 		try {
-			parseSetPDF(args[0],args[1]);
-			
-			
+			parseSetPDF(args[0], args[1]);
+
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		/*String inputFilePath=args[0];
-		String outputFilePath=args[1];
-		Type parseType=Type.table;
-		if (args[2].equals("1"))
-			parseType=Type.table;
-		else if (args[2].equals("2"))
-			parseType=Type.paragraph;
-				
-		int dotPosition=inputFilePath.indexOf(".");
-		String extension=inputFilePath.substring(dotPosition);
-		try {
-		if(extension.equals(".xlsx"))
-			writeJsonData(outputFilePath,parseExcel(inputFilePath,parseType,args[4],Integer.parseInt(args[5])));
-		else if(extension.equals(".docx"))
-			writeJsonData(outputFilePath,parseDocx(inputFilePath,parseType,args[4],Integer.parseInt(args[5])));
-		else if(extension.equals(".pdf"))
-			writeJsonData(outputFilePath,parsePDF(inputFilePath,parseType,args[4],Integer.parseInt(args[5])));
-		writeSampleJsonData();*/
-		}
-		private static void parseSetPDF(String string, String args) throws IOException {
-			File folder = new File(string);
-			File[] listOfFiles = folder.listFiles();
-			HashMap <String,String> att=new HashMap<String, String>();
-			ArrayList<String> fileNames=new ArrayList<String>();
-			for(File file:listOfFiles) {
-				Document pdf = PDF.open(file.getAbsolutePath());
-			    StringBuilder text = new StringBuilder(1024);
-			    fileNames.add(file.getName());
-			    pdf.pipe(new OutputTarget(text));
-			     pdf.close();
-			     boolean go=false;
-			    for(String line:text.toString().split("\n")) {
-			    	if(go) {
-			    		try {
-			    		int begin=line.indexOf("Senator ")+8;
-			    		int end=line.toLowerCase().indexOf("present");
-			    		if (end<0)
-			    			end=line.toLowerCase().indexOf("leave");
-			    		if (end<0)
-			    			end=line.toLowerCase().indexOf("absent");
-			    		String name=line.substring(begin, end).trim();
-			    		boolean present=line.toLowerCase().contains("present");
-			    		String status=att.get(name);
-			    		if(status==null)
-			    			att.put(name, present+"");
-			    		else att.put(name,status+","+present);
-			    		}
-			    		catch (Exception e) {};
-			    	}
-			    	if(line.toLowerCase().contains("status"))
-			    		go=true;
-			    }
-			   
-			    
-				
+		/*
+		 * String inputFilePath=args[0]; String outputFilePath=args[1]; Type
+		 * parseType=Type.table; if (args[2].equals("1")) parseType=Type.table;
+		 * else if (args[2].equals("2")) parseType=Type.paragraph;
+		 * 
+		 * int dotPosition=inputFilePath.indexOf("."); String
+		 * extension=inputFilePath.substring(dotPosition); try {
+		 * if(extension.equals(".xlsx"))
+		 * writeJsonData(outputFilePath,parseExcel(inputFilePath,parseType,args[
+		 * 4],Integer.parseInt(args[5]))); else if(extension.equals(".docx"))
+		 * writeJsonData(outputFilePath,parseDocx(inputFilePath,parseType,args[4
+		 * ],Integer.parseInt(args[5]))); else if(extension.equals(".pdf"))
+		 * writeJsonData(outputFilePath,parsePDF(inputFilePath,parseType,args[4]
+		 * ,Integer.parseInt(args[5]))); writeSampleJsonData();
+		 */
+	}
+
+	private static void parseSetPDF(String string, String args) throws IOException {
+		File folder = new File(string);
+
+		/* for(File file:listOfFiles) { */
+		Document pdf = PDF.open(folder.getAbsolutePath());
+		StringBuilder text = new StringBuilder(1024);
+		pdf.pipe(new OutputTarget(text));
+		pdf.close();// [2].split("\r\n");
+		boolean go = false;
+		String writeLine = "names,party";
+		for (String line : text.toString().split("((\\bAM\\b)|(\\bCM\\b))-\\d{1,4}")) {
+			boolean address=false;
+			String add="";
+			String name="";
+			
+			for (String lin : line.split("\r\n")) {
+				if(!isNullOrEmpty(lin)&&!isWhitespace(lin)) {					
+				lin=lin.trim();				
+				if(checkCategory(lin))
+					continue;
+				if(address) {
+					add+=lin+" ";
+					if(lin.contains("-"))
+					{
+						System.out.println("addr:"+add.replace("/n", "").replace("/r", "")+"<<");
+						add="";
+						address=false;
+					}
+				}
+				else if(lin.contains("@")) {
+					lin=lin.replace(" ","");
+					//System.out.println(lin);
+					int end=0;
+					if(lin.contains("pk"))
+						end=lin.indexOf("pk")+2;
+					else if(lin.contains("com"))
+						end=lin.indexOf("com")+3;
+					else if(lin.contains("co"))
+						end=lin.indexOf("co")+2;
+					System.out.println("em:"+lin.substring(0,end));
+				}
+				else if(lin.equalsIgnoreCase("DEALER")||lin.equalsIgnoreCase("IMPORTER")||lin.equalsIgnoreCase("EXPORTER")||lin.equalsIgnoreCase("MANUFACTURER")||lin.equalsIgnoreCase("SERVICES")||lin.equalsIgnoreCase("DISTRIBUTOR")) {
+					name="";
+					add="";
+				}
+				else {
+					
+					name=name+lin+" ";
+					if(lin.contains(",")){ 
+						address=true;
+						int res = -1;
+								try{
+									res=new Scanner(name).useDelimiter("\\D+").nextInt();
+								}
+						catch(Exception e) {
+							
+						}
+						
+						if (res>-1&&res<name.length())
+							add=name.substring(res).trim();
+						System.out.println("NM: "+name.trim());name="";}
+				}
+				//System.out.println("------------------------------");
+				}
 			}
-			 System.out.println();
-			    String writeLine="names,party";
-			    Iterator keyItt=att.keySet().iterator();
-			    HashMap<String, String> partyMap = parseDocx(args);
-			    for(String fn:fileNames)
-			    	writeLine=writeLine+","+fn;
-			    writeLine=writeLine+","+"count";
-			    writeLine=writeLine+"\n";
-			    while(keyItt.hasNext()) {
-			    	String key=(String) keyItt.next();
-			    	String party=partyMap.get(key.trim());
-			    	String in = att.get(key).toLowerCase();
-			    	int wordcount = 0;
-			    	Pattern p = Pattern.compile("true");
-			    	Matcher m = p.matcher( in );
-			    	while (m.find()) {
-			    	    wordcount++;
-			    	}
-			    	writeLine=writeLine+key+","+party+","+att.get(key)+","+wordcount;
-			    	writeLine=writeLine+"\n";
-			    }
-			    Files.write(java.nio.file.Paths.get(string+"\\agg.txt"), writeLine.getBytes());	
+			System.out.println("******************************");
+		}
+
+		// }
+		System.out.println();
+		// HashMap<String, String> partyMap = parseDocx(args);
+		// Files.write(java.nio.file.Paths.get(string+"\\agg.txt"),
+		// writeLine.getBytes());
+
+	}
+	private static boolean checkCategory(String line) {
+		if(StringUtils.isAllUpperCase(line.replace(" ", ""))&&!line.equalsIgnoreCase("DEALER")&&!line.equalsIgnoreCase("IMPORTER")&&!line.equalsIgnoreCase("EXPORTER")&&!line.equalsIgnoreCase("MANUFACTURER")&&!line.equalsIgnoreCase("SERVICES")&&!line.equalsIgnoreCase("NULL")&&!line.equalsIgnoreCase("DISTRIBUTOR")) {
+			System.out.println("Category>>>>>>>>"+line.trim());
+			return true;
+		}
+		return false;
 		
 	}
-//		IOException e) {
-//			e.printStackTrace();
-//			System.exit(1);
-//		}
-		
 	
-//	}
 
+
+	// IOException e) {
+	// e.printStackTrace();
+	// System.exit(1);
+	// }
+
+	// }
+
+	public static boolean isNullOrEmpty(String s) {
+	    return s == null || s.length() == 0;
+	}
+
+	public static boolean isNullOrWhitespace(String s) {
+	    return s == null || isWhitespace(s);
+
+	}
+	private static boolean isWhitespace(String s) {
+	    int length = s.length();
+	    if (length > 0) {
+	        for (int i = 0; i < length; i++) {
+	            if (!Character.isWhitespace(s.charAt(i))) {
+	                return false;
+	            }
+	        }
+	        return true;
+	    }
+	    return false;
+	}
+	
 	private static void writeSampleJsonData() throws IOException {
-		ArrayList<JsonData> sampleData=new 	ArrayList<JsonData>();
-		JsonData jsonData=new JsonData(null, null, null);
-		HashMap<String,String> values= new HashMap<String, String>();
+		ArrayList<JsonData> sampleData = new ArrayList<JsonData>();
+		JsonData jsonData = new JsonData(null, null, null);
+		HashMap<String, String> values = new HashMap<String, String>();
 		values.put("key1", "value1");
 		values.put("key2", "value2");
 		jsonData.setTitle("parent");
 		jsonData.setKeyValues(values);
-		ArrayList<JsonData> sampleData1=new 	ArrayList<JsonData>();
-		JsonData jsonData1=new JsonData(null, null, null);
-		HashMap<String,String> values1= new HashMap<String, String>();
+		ArrayList<JsonData> sampleData1 = new ArrayList<JsonData>();
+		JsonData jsonData1 = new JsonData(null, null, null);
+		HashMap<String, String> values1 = new HashMap<String, String>();
 		values.put("key1", "value1");
 		values.put("key2", "value2");
 		jsonData1.setTitle("child");
@@ -162,114 +204,115 @@ public class MainParser {
 		jsonData.setChilderen(sampleData1);
 		sampleData.add(jsonData);
 		writeJsonData("d:\\test.json", sampleData);
-		
-		
+
 	}
 
-	private static ArrayList<JsonData> parsePDF(String inputFilePath, Type parseType, String args, int i) throws IOException {
+	private static ArrayList<JsonData> parsePDF(String inputFilePath, Type parseType, String args, int i)
+			throws IOException {
 		Document pdf = PDF.open(inputFilePath);
-	    StringBuilder text = new StringBuilder(1024);
-	    pdf.pipe(new OutputTarget(text));
-	    pdf.close();
-	    System.out.println(text);
+		StringBuilder text = new StringBuilder(1024);
+		pdf.pipe(new OutputTarget(text));
+		pdf.close();
+		System.out.println(text);
 		return null;
-		
+
 	}
 
-	private static HashMap<String,String> parseDocx(String inputFilePath) throws IOException {
-		 File file = new File(inputFilePath);
-         FileInputStream fis = new FileInputStream(file.getAbsolutePath());
+	private static HashMap<String, String> parseDocx(String inputFilePath) throws IOException {
+		File file = new File(inputFilePath);
+		FileInputStream fis = new FileInputStream(file.getAbsolutePath());
 
-         XWPFDocument document = new XWPFDocument(fis);
+		XWPFDocument document = new XWPFDocument(fis);
 
-         List<XWPFParagraph> paragraphs = document.getParagraphs();
+		List<XWPFParagraph> paragraphs = document.getParagraphs();
 
-         HashMap<String,String> partyMap=new HashMap<String, String>();
-         for (XWPFParagraph para : paragraphs) {
-        	 String line=para.getText();
-        	 try {
-        	 int begin=line.indexOf("Senator ")+8;
-	    		int end=line.indexOf(",");
-	    		System.out.println();
-	    		String name=line.substring(begin, end).trim();
-	    		String party=line.substring(end+1);
-	    		partyMap.put(name, party);
-        	 }
-        	 catch(Exception e) {}
-         }
-         fis.close();
-         document.close();
+		HashMap<String, String> partyMap = new HashMap<String, String>();
+		for (XWPFParagraph para : paragraphs) {
+			String line = para.getText();
+			try {
+				int begin = line.indexOf("Senator ") + 8;
+				int end = line.indexOf(",");
+				System.out.println();
+				String name = line.substring(begin, end).trim();
+				String party = line.substring(end + 1);
+				partyMap.put(name, party);
+			} catch (Exception e) {
+			}
+		}
+		fis.close();
+		document.close();
 		return partyMap;
-		
+
 	}
 
-	private static ArrayList<JsonData> parseExcel(String inputFilePath, Type parseType, String args, int i) throws IOException {
-		 FileInputStream excelFile = new FileInputStream(new File(inputFilePath));
-         Workbook workbook = new XSSFWorkbook(excelFile);
-         Sheet datatypeSheet = workbook.getSheetAt(0);
-         Iterator<Row> iterator = datatypeSheet.iterator();
+	private static ArrayList<JsonData> parseExcel(String inputFilePath, Type parseType, String args, int i)
+			throws IOException {
+		FileInputStream excelFile = new FileInputStream(new File(inputFilePath));
+		Workbook workbook = new XSSFWorkbook(excelFile);
+		Sheet datatypeSheet = workbook.getSheetAt(0);
+		Iterator<Row> iterator = datatypeSheet.iterator();
 
-         while (iterator.hasNext()) {
+		while (iterator.hasNext()) {
 
-             Row currentRow = iterator.next();
-             Iterator<Cell> cellIterator = currentRow.iterator();
+			Row currentRow = iterator.next();
+			Iterator<Cell> cellIterator = currentRow.iterator();
 
-             while (cellIterator.hasNext()) {
+			while (cellIterator.hasNext()) {
 
-                 Cell currentCell = cellIterator.next();
-                 //getCellTypeEnum shown as deprecated for version 3.15
-                 //getCellTypeEnum ill be renamed to getCellType starting from version 4.0
-                 if (currentCell.getCellTypeEnum() == CellType.STRING) {
-                     System.out.print(currentCell.getStringCellValue() + "--");
-                 } else if (currentCell.getCellTypeEnum() == CellType.NUMERIC) {
-                     System.out.print(currentCell.getNumericCellValue() + "--");
-                 }
+				Cell currentCell = cellIterator.next();
+				// getCellTypeEnum shown as deprecated for version 3.15
+				// getCellTypeEnum ill be renamed to getCellType starting from
+				// version 4.0
+				if (currentCell.getCellTypeEnum() == CellType.STRING) {
+					System.out.print(currentCell.getStringCellValue() + "--");
+				} else if (currentCell.getCellTypeEnum() == CellType.NUMERIC) {
+					System.out.print(currentCell.getNumericCellValue() + "--");
+				}
 
-             }
-             System.out.println();
-         }
+			}
+			System.out.println();
+		}
 		return null;
-		
+
 	}
-	
+
 	private static void writeJsonData(String outputFileName, ArrayList<JsonData> dataSets) throws IOException {
-		JsonWriter  writer = new JsonWriter(new FileWriter(outputFileName));
+		JsonWriter writer = new JsonWriter(new FileWriter(outputFileName));
 		writer.beginObject();
-		for(JsonData dataSet:dataSets) {
-			 writeIndiviualDataSet(writer,dataSet);
-		        
+		for (JsonData dataSet : dataSets) {
+			writeIndiviualDataSet(writer, dataSet);
+
 		}
 		writer.endObject();
-        writer.close();
+		writer.close();
 	}
-	
+
 	private static void writeIndiviualDataSet(JsonWriter writer, JsonData dataSet) throws IOException {
-		if(dataSet!=null&&!dataSet.getTitle().isEmpty())		        
+		if (dataSet != null && !dataSet.getTitle().isEmpty())
 			writer.name(dataSet.getTitle());
-	        writer.beginArray();
-	        writer.beginObject();
-	        Iterator<String> keyIterator = dataSet.getKeyValues().keySet().iterator();
-	        while(keyIterator.hasNext()) {
-	        	String key=keyIterator.next();
-	        	writer.name(key).value(dataSet.getKeyValues().get(key));		        
-	        }
-	       /** for(JsonData childerenDataSet:dataSet.getChilderen()) {
-	        	//writer.beginObject();
-	        	//writer.beginArray();	        	
-	        	writeIndiviualDataSet(writer,childerenDataSet);	        	
-	        	//writer.endArray();
-	        	//writer.endObject();
-	        }*/	       	
-	        writer.endObject();
-	        writer.endArray();
-		
+		writer.beginArray();
+		writer.beginObject();
+		Iterator<String> keyIterator = dataSet.getKeyValues().keySet().iterator();
+		while (keyIterator.hasNext()) {
+			String key = keyIterator.next();
+			writer.name(key).value(dataSet.getKeyValues().get(key));
+		}
+		/**
+		 * for(JsonData childerenDataSet:dataSet.getChilderen()) {
+		 * //writer.beginObject(); //writer.beginArray();
+		 * writeIndiviualDataSet(writer,childerenDataSet); //writer.endArray();
+		 * //writer.endObject(); }
+		 */
+		writer.endObject();
+		writer.endArray();
+
 	}
 
 	private static class JsonData {
-		private HashMap<String,String> keyValues=new HashMap<String, String>();
+		private HashMap<String, String> keyValues = new HashMap<String, String>();
 		private String title;
-		private ArrayList<JsonData> childeren=new ArrayList<MainParser.JsonData>();
-		
+		private ArrayList<JsonData> childeren = new ArrayList<MainParser.JsonData>();
+
 		public JsonData(HashMap<String, String> keyValues, String title, ArrayList<JsonData> childeren) {
 			super();
 			this.keyValues = keyValues;
@@ -342,11 +385,7 @@ public class MainParser {
 				return false;
 			return true;
 		}
-		
-		
-		
-		
-	
+
 	}
-	
+
 }
