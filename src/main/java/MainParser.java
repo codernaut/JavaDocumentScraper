@@ -80,7 +80,7 @@ public class MainParser {
 		pdf.pipe(new OutputTarget(text));
 		pdf.close();// [2].split("\r\n");
 		boolean go = false;
-		String writeLine = "names,party";
+		String writeLine = "";
 		for (String line : text.toString().split("((\\bAM\\b)|(\\bCM\\b))-\\d{1,4}")) {
 			boolean address=false;
 			String add="";
@@ -89,13 +89,20 @@ public class MainParser {
 			for (String lin : line.split("\r\n")) {
 				if(!isNullOrEmpty(lin)&&!isWhitespace(lin)) {					
 				lin=lin.trim();				
-				if(checkCategory(lin))
+				if(checkCategory(lin)!=null) {
+					String a = checkCategory(lin);
+					System.out.println(a);
+					writeLine=writeLine+a+System.getProperty("line.seperator");
 					continue;
+				}
+				
 				if(address) {
 					add+=lin+" ";
-					if(lin.contains("-"))
+					if(lin.contains("-")&&add!=null)
 					{
+						
 						System.out.println("addr:"+add.replace("/n", "").replace("/r", "")+"<<");
+						writeLine=writeLine+"addr:"+add.replace("/n", "").replace("/r", "")+"<<"+System.getProperty("line.seperator");;
 						add="";
 						address=false;
 					}
@@ -111,9 +118,14 @@ public class MainParser {
 					else if(lin.contains("co"))
 						end=lin.indexOf("co")+2;
 					System.out.println("em:"+lin.substring(0,end));
+					writeLine=writeLine+"em:"+lin.substring(0,end)+System.getProperty("line.seperator");;
 				}
 				else if(lin.equalsIgnoreCase("DEALER")||lin.equalsIgnoreCase("IMPORTER")||lin.equalsIgnoreCase("EXPORTER")||lin.equalsIgnoreCase("MANUFACTURER")||lin.equalsIgnoreCase("SERVICES")||lin.equalsIgnoreCase("DISTRIBUTOR")) {
+					/*System.out.println("NM: "+name.trim());name="";
+					writeLine=writeLine+"NM: "+name.trim()+"\n";*/
 					name="";
+					/*System.out.println("addr:"+add.replace("/n", "").replace("/r", "")+"<<");
+					writeLine=writeLine+"addr:"+add.replace("/n", "").replace("/r", "")+"<<"+System.getProperty("line.seperator");*/
 					add="";
 				}
 				else {
@@ -129,9 +141,15 @@ public class MainParser {
 							
 						}
 						
-						if (res>-1&&res<name.length())
+						if (res>-1&&res<name.length()) {
 							add=name.substring(res).trim();
-						System.out.println("NM: "+name.trim());name="";}
+							name=name.substring(0, res);
+						}
+						if(name!=null) {
+						System.out.println("NM: "+name.trim());name="";
+						writeLine=writeLine+"NM: "+name.trim()+System.getProperty("line.seperator");
+						}
+						}
 				}
 				//System.out.println("------------------------------");
 				}
@@ -142,16 +160,15 @@ public class MainParser {
 		// }
 		System.out.println();
 		// HashMap<String, String> partyMap = parseDocx(args);
-		// Files.write(java.nio.file.Paths.get(string+"\\agg.txt"),
-		// writeLine.getBytes());
+		 Files.write(java.nio.file.Paths.get("d:\\agg.txt"), writeLine.getBytes());
 
 	}
-	private static boolean checkCategory(String line) {
+	private static String checkCategory(String line) {
 		if(StringUtils.isAllUpperCase(line.replace(" ", ""))&&!line.equalsIgnoreCase("DEALER")&&!line.equalsIgnoreCase("IMPORTER")&&!line.equalsIgnoreCase("EXPORTER")&&!line.equalsIgnoreCase("MANUFACTURER")&&!line.equalsIgnoreCase("SERVICES")&&!line.equalsIgnoreCase("NULL")&&!line.equalsIgnoreCase("DISTRIBUTOR")) {
 			System.out.println("Category>>>>>>>>"+line.trim());
-			return true;
+			return "Category>>>>>>>>"+line.trim();
 		}
-		return false;
+		return null;
 		
 	}
 	
